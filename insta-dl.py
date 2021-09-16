@@ -2,9 +2,11 @@
 
 import os
 import glob
+import matplotlib
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 
 from PIL import Image
 
@@ -71,25 +73,36 @@ if False:
 grams = glob.glob(os.path.join(cache_dir, "*.jpg"))
 print(f"processing {len(grams)} grams")
 
-for gram in grams[0:10]:
+for gram in grams[0:1]:
     img = Image.open(gram)
-    array = np.array(img)
+    rgb_array = np.array(img)
 
-    height, width, channels = array.shape
+    height, width, channels = rgb_array.shape
+    img_type = rgb_array.dtype
 
-    rgb_squash_v = np.average(array, axis=0)
-    rgb_squash_h = np.average(array, axis=1)
-    rgb_avg = np.average(array, axis=(0, 1))
+    rgb_squash_v = np.average(rgb_array, axis=0)
+    rgb_squash_h = np.average(rgb_array, axis=1)
+    rgb_avg = np.average(rgb_array, axis=(0, 1))
 
+    # resize display image so they're not 1px wide
     pix = 100
+    img_squash_v = Image.fromarray(np.expand_dims(rgb_squash_v, axis = 0).astype(img_type)).resize((width,pix), Image.NEAREST)
+    img_squash_h = Image.fromarray(np.expand_dims(rgb_squash_h, axis = 1).astype(img_type)).resize((pix,height), Image.NEAREST)
+    img_avg = Image.fromarray(np.resize(rgb_avg, (pix,pix,channels)).astype(img_type))
 
-    img_squash_v = Image.fromarray(np.expand_dims(rgb_squash_v, axis = 0).astype(array.dtype)).resize((width,pix), Image.NEAREST)
-    img_squash_h = Image.fromarray(np.expand_dims(rgb_squash_h, axis = 1).astype(array.dtype)).resize((pix,height), Image.NEAREST)
-    img_avg = Image.fromarray(np.resize(rgb_avg, (pix,pix,channels)).astype(array.dtype))
+    hsv_array = colors.rgb_to_hsv(rgb_array)
+    hsv_squash_v = np.expand_dims(np.average(hsv_array, axis = 0), axis = 0)
+    hsv_squash_h = np.expand_dims(np.average(hsv_array, axis = 1), axis = 1)
+    hsv_avg = np.average(hsv_array, axis = (0,1))
+
+    img_squash_v2 = Image.fromarray(colors.hsv_to_rgb(hsv_squash_v).astype(img_type)).resize((width, pix), Image.NEAREST)
+    img_squash_h2 = Image.fromarray(colors.hsv_to_rgb(hsv_squash_h).astype(img_type)).resize((pix, height), Image.NEAREST)
+    img_avg2= Image.fromarray(colors.hsv_to_rgb(hsv_avg).astype(img_type)).resize((pix,pix), Image.NEAREST)
+
 
 
     fig  = plt.figure(constrained_layout = True)
-    spec = fig.add_gridspec(2,2, width_ratios = [width, pix], height_ratios = [height, pix])
+    spec = fig.add_gridspec(3,3, width_ratios = [width, pix, pix], height_ratios = [height, pix, pix])
 
     ax = fig.add_subplot(spec[0,0])
     ax.axis('off')
@@ -107,6 +120,20 @@ for gram in grams[0:10]:
     ax = fig.add_subplot(spec[1,1])
     ax.axis('off')
     ax.imshow(img_avg, interpolation='nearest')
+
+
+    ax = fig.add_subplot(spec[0,2])
+    ax.axis('off')
+    ax.imshow(img_squash_h2, interpolation='nearest')
+   
+    ax = fig.add_subplot(spec[2,0])
+    ax.axis('off')
+    ax.imshow(img_squash_v2, interpolation='nearest')
+
+    ax = fig.add_subplot(spec[2,2])
+    ax.axis('off')
+    ax.imshow(img_avg, interpolation='nearest')
+
     plt.show()
 
 
