@@ -73,36 +73,32 @@ if False:
 grams = glob.glob(os.path.join(cache_dir, "*.jpg"))
 print(f"processing {len(grams)} grams")
 
+def float_array_to_img(array):
+    assert(len(array.shape) == 3)
+    return Image.fromarray((255.0 *array).astype('uint8') )
+
 for gram in grams[0:1]:
     img = Image.open(gram)
-    rgb_array = np.array(img)
+
+    # convert image to different colorspaces in floatspace
+    rgb_array = np.array(img) / 255.0                   # RGB
+    hsv_array = colors.rgb_to_hsv(rgb_array)            # HSV
 
     height, width, channels = rgb_array.shape
-    img_type = rgb_array.dtype
+    img_type = 'uint8' 
 
-    rgb_squash_v = np.average(rgb_array, axis=0)
-    rgb_squash_h = np.average(rgb_array, axis=1)
-    rgb_avg = np.average(rgb_array, axis=(0, 1))
+    # Average along horizontal axis
+    rgb_squash_h = np.expand_dims(np.average(rgb_array, axis=1), axis=1)
+    hsv_squash_h = np.expand_dims(np.average(hsv_array, axis=1), axis=1)
 
     # resize display image so they're not 1px wide
     pix = 100
-    img_squash_v = Image.fromarray(np.expand_dims(rgb_squash_v, axis = 0).astype(img_type)).resize((width,pix), Image.NEAREST)
-    img_squash_h = Image.fromarray(np.expand_dims(rgb_squash_h, axis = 1).astype(img_type)).resize((pix,height), Image.NEAREST)
-    img_avg = Image.fromarray(np.resize(rgb_avg, (pix,pix,channels)).astype(img_type))
-
-    hsv_array = colors.rgb_to_hsv(rgb_array)
-    hsv_squash_v = np.expand_dims(np.average(hsv_array, axis = 0), axis = 0)
-    hsv_squash_h = np.expand_dims(np.average(hsv_array, axis = 1), axis = 1)
-    hsv_avg = np.average(hsv_array, axis = (0,1))
-
-    img_squash_v2 = Image.fromarray(colors.hsv_to_rgb(hsv_squash_v).astype(img_type)).resize((width, pix), Image.NEAREST)
-    img_squash_h2 = Image.fromarray(colors.hsv_to_rgb(hsv_squash_h).astype(img_type)).resize((pix, height), Image.NEAREST)
-    img_avg2= Image.fromarray(colors.hsv_to_rgb(hsv_avg).astype(img_type)).resize((pix,pix), Image.NEAREST)
-
-
+    
+    img_squash_h_rgb = float_array_to_img(rgb_squash_h).resize((pix,height), Image.NEAREST)
+    img_squash_h_hsv = float_array_to_img(colors.hsv_to_rgb(hsv_squash_h)).resize((pix, height), Image.NEAREST)
 
     fig  = plt.figure(constrained_layout = True)
-    spec = fig.add_gridspec(3,3, width_ratios = [width, pix, pix], height_ratios = [height, pix, pix])
+    spec = fig.add_gridspec(1,3, width_ratios = [width, pix, pix], height_ratios = [height])
 
     ax = fig.add_subplot(spec[0,0])
     ax.axis('off')
@@ -110,30 +106,40 @@ for gram in grams[0:1]:
 
     ax = fig.add_subplot(spec[0,1])
     ax.axis('off')
-    ax.imshow(img_squash_h, interpolation='nearest')
+    ax.imshow(img_squash_h_rgb, interpolation='nearest')
     
-
-    ax = fig.add_subplot(spec[1,0])
-    ax.axis('off')
-    ax.imshow(img_squash_v, interpolation='nearest')
-
-    ax = fig.add_subplot(spec[1,1])
-    ax.axis('off')
-    ax.imshow(img_avg, interpolation='nearest')
-
-
     ax = fig.add_subplot(spec[0,2])
     ax.axis('off')
-    ax.imshow(img_squash_h2, interpolation='nearest')
+    ax.imshow(img_squash_h_hsv, interpolation='nearest')
    
-    ax = fig.add_subplot(spec[2,0])
-    ax.axis('off')
-    ax.imshow(img_squash_v2, interpolation='nearest')
+    plt.show()
 
-    ax = fig.add_subplot(spec[2,2])
+def plot_color_circle_density(array):
+
+
+    ax = plt.subplot(1,1,1,polar=True)
+    ax.set_aspect(1.0)
     ax.axis('off')
-    ax.imshow(img_avg, interpolation='nearest')
+
+    #draw color wheel
+    x_color= np.arange(0, 2*np.pi, 0.01)
+    y_color = np.ones_like(x_color)
+    
+    ax.scatter(x_color, y_color, c=x_color, s=300, cmap = plt.get_cmap('hsv'), norm = colors.Normalize(0.0, 2*np.pi))
+
+    
+    bins = np.arange(0,1,1.0/256)
+    hist, _ = np.histogram(array, bins)
+
+    x_dist = 2 * np.pi * bins
+    normalized_hist = (1.0 + hist / np.max(hist))
+    y_dist = np.append(normalized_hist, normalized_hist[0])
+
+
+    ax.plot(x_dist, y_dist,)
+
+
 
     plt.show()
 
-
+plot_color_circle_density(hsv_array[:,:,0])
