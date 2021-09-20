@@ -114,30 +114,67 @@ for gram in grams[0:1]:
    
     plt.show()
 
-def plot_color_circle_density(array):
 
-
-    ax = plt.subplot(1,1,1,polar=True)
-    ax.set_aspect(1.0)
-    ax.axis('off')
-
-    #draw color wheel
+def draw_color_wheel(ax):
     x_color= np.arange(0, 2*np.pi, 0.01)
     y_color = np.ones_like(x_color)
-    
     ax.scatter(x_color, y_color, c=x_color, s=300, cmap = plt.get_cmap('hsv'), norm = colors.Normalize(0.0, 2*np.pi))
 
-    
-    bins = np.arange(0,1,1.0/256)
-    hist, _ = np.histogram(array, bins)
 
+def smooth_with_wrap(hist, kernel):
+    #assuming kernel weights sum to 1
+    assert(len(kernel) % 2 == 1)
+    result = np.zeros_like(hist)
+
+    #surely there's a numpy function for that
+    for i, x in enumerate(hist):
+        for j, y in enumerate(kernel):
+            index = (i + j - len(kernel) // 2 + 1) % len(hist)
+            result[index] += y * x
+    
+    return result
+
+def box_filter(n):
+    return (1.0 / n ) * np.ones(n)
+
+
+def plot_hue_hist(ax, bins, hist):
     x_dist = 2 * np.pi * bins
     normalized_hist = (1.0 + hist / np.max(hist))
     y_dist = np.append(normalized_hist, normalized_hist[0])
+    ax.plot(x_dist, y_dist)
+
+def plot_color_circle_density(array):
 
 
-    ax.plot(x_dist, y_dist,)
+    bins = np.arange(0,1,1.0/256)
+    hist, _ = np.histogram(array, bins)
 
+    ax = plt.subplot(1,3,1,polar=True)
+    ax.set_aspect(1.0)
+    ax.set_ylim([0,2])
+    ax.axis('off')
+    ax.set_title('unfiltered')
+
+    draw_color_wheel(ax)
+    plot_hue_hist(ax,bins,hist)
+
+    ax = plt.subplot(1,3,2, polar=True)
+    ax.set_aspect(1.0)
+    ax.set_ylim([0,2])
+    ax.axis('off')
+    ax.set_title('box 11')
+    draw_color_wheel(ax)
+    plot_hue_hist(ax,bins, smooth_with_wrap(hist, box_filter(11)))
+    
+    ax = plt.subplot(1,3,3, polar=True)
+    ax.set_aspect(1.0)
+    ax.set_ylim([0,2])
+    ax.axis('off')
+    ax.set_title('box 25')
+    draw_color_wheel(ax)
+    plot_hue_hist(ax,bins, smooth_with_wrap(hist, box_filter(25)))
+    
 
 
     plt.show()
